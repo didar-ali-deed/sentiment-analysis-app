@@ -1,63 +1,88 @@
 # Sentiment Analysis Web App
 
 ## Overview
-This project is a machine learning-based web application that performs sentiment analysis on user-input text. It uses a pre-trained DistilBERT model from Hugging Face to classify text as Positive or Negative, and is deployed as a Flask web app on Render. The app features an enhanced UI with Tailwind CSS styling and emojis for a more engaging user experience.
+A machine learning-based web application that performs sentiment analysis on user-input text. Uses a pre-trained DistilBERT model (SST-2) from Hugging Face, running via **ONNX Runtime** — no PyTorch required — and deployed as a Flask web app on Render.
 
 ## Features
-- **Sentiment Prediction**: Classifies text as Positive or Negative with confidence scores.
-- **Enhanced Web Interface**: A visually appealing UI built with Flask and Tailwind CSS, featuring a gradient background, teal accents, and emojis (👍 for Positive, 👎 for Negative) in the results.
-- **Deployment**: Hosted live on Render for public access.
+- **Sentiment Prediction** — Classifies text as Positive or Negative with confidence scores and a visual confidence bar.
+- **Lightweight Inference** — Runs on ONNX Runtime instead of PyTorch, reducing the dependency footprint from ~700 MB to ~10 MB.
+- **REST API** — JSON endpoint at `/api/predict` for programmatic use.
+- **Clean Dark UI** — Custom-styled interface with DM Serif Display typography, animated results, and emoji indicators.
+- **Deployment Ready** — Configured for Render with `gunicorn`.
 
 ## Tech Stack
-- **Machine Learning**: Python, Hugging Face Transformers, PyTorch
-- **Web Development**: Flask, HTML, Tailwind CSS
-- **Deployment**: Render
+- **ML / Inference**: Hugging Face Transformers, Optimum, ONNX Runtime
+- **Web**: Flask, Jinja2, HTML/CSS
+- **Deployment**: Render (gunicorn)
 
 ## Screenshots
-![Sentiment Analysis UI](screenshots/image.png)  
-*Updated UI with gradient background, teal styling, and emoji-enhanced results.*
+![Sentiment Analysis UI](screenshots/image.png)
 
-*(Add a screenshot of your live app by uploading an image to a `screenshots` folder in your repository and updating the path above.)*
+## Project Structure
+```
+sentiment-analysis-app/
+├── sentiment_analysis_app.py   # Flask app + inference logic
+├── requirements.txt
+└── templates/
+    └── index.html              # Frontend UI
+```
 
-## Setup Instructions
-1. **Clone the Repository**:
-   ```bash
-   git clone <your-repo-url>
-   cd sentiment-analysis-app
-   ```
-2. **Install Dependencies**:
+## Setup
+
+**1. Clone the repository**
+```bash
+git clone <your-repo-url>
+cd sentiment-analysis-app
+```
+
+**2. Install dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+**3. Run locally**
+```bash
+python sentiment_analysis_app.py
+```
+Visit `http://localhost:5000`. The ONNX model (~250 MB) downloads automatically on first run.
+
+## API Usage
+```bash
+curl -X POST http://localhost:5000/api/predict \
+  -H "Content-Type: application/json" \
+  -d '{"text": "This is absolutely amazing!"}'
+```
+```json
+{
+  "sentiment": "Positive",
+  "confidence": 0.9987,
+  "emoji": "😊",
+  "text": "This is absolutely amazing!"
+}
+```
+
+## Deployment on Render
+1. Create a free account at [render.com](https://render.com) and connect your GitHub repo.
+2. Set runtime to **Python**.
+3. Build command:
    ```bash
    pip install -r requirements.txt
    ```
-3. **Run Locally**:
+4. Start command:
    ```bash
-   python sentiment_analysis_app.py
+   gunicorn --bind 0.0.0.0:$PORT sentiment_analysis_app:app
    ```
-   Access at `http://localhost:5000`.
+5. Deploy — Render provides a live URL automatically.
 
-## Deployment
-1. **Render Setup**:
-   - Create a free account on Render (https://render.com).
-   - Create a new Web Service and connect your GitHub repository.
-   - Set the runtime to Python and use the following build command:
-     ```bash
-     pip install -r requirements.txt
-     ```
-   - Set the start command:
-     ```bash
-     gunicorn --bind 0.0.0.0:$PORT sentiment_analysis_app:app
-     ```
-2. **Push Requirements**:
-   Ensure `requirements.txt` is in the repository.
-3. Deploy and access the live URL provided by Render.
-
-## Highlight
-- Developed and deployed a sentiment analysis web app using DistilBERT and Flask.
-- Designed an engaging UI with Tailwind CSS, featuring gradient styling and emoji-enhanced results.
-- Demonstrated proficiency in NLP, web development, and cloud deployment.
-- Live demo: [Insert Render URL after deployment]
+## Why ONNX Runtime instead of PyTorch?
+| | PyTorch | ONNX Runtime |
+|---|---|---|
+| Install size | ~700 MB | ~10 MB |
+| CPU inference speed | Baseline | ~1.5–2× faster |
+| Required for this app | No | Yes |
 
 ## Future Improvements
-- Add support for multi-class sentiment (e.g., Neutral).
-- Enhance UI with real-time predictions using JavaScript.
-- Optimize model for faster inference.
+- Add Neutral class support for nuanced sentiment.
+- Real-time predictions via JavaScript (no page reload).
+- Batch text analysis from file upload.
+- Confidence threshold warnings for borderline predictions.
