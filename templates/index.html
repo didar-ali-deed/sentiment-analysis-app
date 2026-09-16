@@ -1,265 +1,274 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sentiment Analyzer</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap"
-        rel="stylesheet" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A production-minded sentiment intelligence dashboard powered by DistilBERT and ONNX Runtime.">
+    <title>Sentiment Intelligence · ML portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
         :root {
-            --bg: #0f0f11;
-            --surface: #18181c;
-            --border: #2a2a32;
-            --accent: #7c6af7;
-            --accent2: #f76a8a;
-            --text: #e8e8ef;
-            --muted: #7a7a8a;
-            --pos: #4ade80;
-            --neg: #f87171;
-            --radius: 14px;
+            --ink: #f4f7fb;
+            --muted: #8b96a8;
+            --muted-2: #657083;
+            --bg: #08101b;
+            --panel: #0f1b2a;
+            --panel-2: #122236;
+            --line: #213147;
+            --blue: #73a6ff;
+            --cyan: #58d6d0;
+            --lime: #b8ef92;
+            --coral: #ff927e;
+            --shadow: 0 24px 70px rgba(0, 0, 0, .28);
         }
 
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1rem;
-        }
-
-        /* Subtle grid background */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image:
-                linear-gradient(rgba(124, 106, 247, .04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(124, 106, 247, .04) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
-        }
-
-        .card {
-            position: relative;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 2.5rem;
-            width: 100%;
-            max-width: 560px;
-            box-shadow: 0 0 60px rgba(124, 106, 247, .08);
-        }
-
-        h1 {
-            font-family: 'DM Serif Display', serif;
-            font-size: 2rem;
-            letter-spacing: -.5px;
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: .4rem;
-        }
-
-        .subtitle {
-            color: var(--muted);
-            font-size: .9rem;
-            margin-bottom: 2rem;
-        }
-
-        label {
-            display: block;
-            font-size: .8rem;
-            font-weight: 600;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            color: var(--muted);
-            margin-bottom: .5rem;
-        }
-
-        textarea {
-            width: 100%;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            color: var(--text);
-            font-family: 'DM Sans', sans-serif;
-            font-size: 1rem;
-            padding: .9rem 1rem;
-            resize: vertical;
-            min-height: 110px;
-            outline: none;
-            transition: border-color .2s;
-        }
-
-        textarea:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(124, 106, 247, .15);
-        }
-
-        textarea::placeholder {
-            color: var(--muted);
-        }
-
-        button[type="submit"] {
-            margin-top: 1rem;
-            width: 100%;
-            padding: .85rem;
-            background: linear-gradient(135deg, var(--accent), #5b4fd4);
-            border: none;
-            border-radius: var(--radius);
-            color: #fff;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity .2s, transform .1s;
-        }
-
-        button[type="submit"]:hover {
-            opacity: .9;
-        }
-
-        button[type="submit"]:active {
-            transform: scale(.98);
-        }
-
-        /* Result card */
-        .result {
-            margin-top: 1.5rem;
-            padding: 1.25rem 1.4rem;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 1.1rem;
-            animation: fadeUp .35s ease;
-        }
-
-        .result.positive {
-            border-color: rgba(74, 222, 128, .35);
-            background: rgba(74, 222, 128, .06);
-        }
-
-        .result.negative {
-            border-color: rgba(248, 113, 113, .35);
-            background: rgba(248, 113, 113, .06);
-        }
-
-        .result-emoji {
-            font-size: 2.2rem;
-            line-height: 1;
-        }
-
-        .result-body {
-            flex: 1;
-        }
-
-        .result-label {
-            font-family: 'DM Serif Display', serif;
-            font-size: 1.4rem;
-        }
-
-        .result.positive .result-label {
-            color: var(--pos);
-        }
-
-        .result.negative .result-label {
-            color: var(--neg);
-        }
-
-        .result-conf {
-            font-size: .82rem;
-            color: var(--muted);
-            margin-top: .15rem;
-        }
-
-        /* Confidence bar */
-        .bar-track {
-            height: 4px;
-            background: var(--border);
-            border-radius: 99px;
-            margin-top: .6rem;
-            overflow: hidden;
-        }
-
-        .bar-fill {
-            height: 100%;
-            border-radius: 99px;
-            transition: width .6s ease;
-        }
-
-        .positive .bar-fill {
-            background: var(--pos);
-        }
-
-        .negative .bar-fill {
-            background: var(--neg);
-        }
-
-        @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .footer {
-            margin-top: 2rem;
-            text-align: center;
-            font-size: .75rem;
-            color: var(--muted);
-        }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; color: var(--ink); background: var(--bg); font-family: Manrope, sans-serif; }
+        body::before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .65; background: radial-gradient(circle at 72% 0%, rgba(76, 133, 255, .15), transparent 35%), linear-gradient(120deg, rgba(88, 214, 208, .035), transparent 45%); }
+        button, textarea { font: inherit; }
+        button { cursor: pointer; }
+        .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; position: relative; }
+        .sidebar { border-right: 1px solid var(--line); background: rgba(8, 16, 27, .78); padding: 28px 18px; display: flex; flex-direction: column; }
+        .brand { display: flex; align-items: center; gap: 11px; padding: 0 10px 30px; }
+        .brand-mark { width: 33px; height: 33px; border: 1px solid rgba(115, 166, 255, .65); border-radius: 10px; position: relative; background: linear-gradient(140deg, rgba(115,166,255,.28), rgba(88,214,208,.12)); }
+        .brand-mark::before, .brand-mark::after { content: ''; position: absolute; background: var(--cyan); border-radius: 8px; }
+        .brand-mark::before { height: 4px; width: 16px; left: 8px; top: 9px; transform: rotate(45deg); }
+        .brand-mark::after { height: 4px; width: 16px; left: 8px; top: 18px; transform: rotate(-45deg); background: var(--blue); }
+        .brand strong { display: block; font-size: 14px; letter-spacing: -.2px; }
+        .brand small { color: var(--muted-2); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+        .eyebrow { color: var(--muted-2); font: 500 10px 'DM Mono', monospace; letter-spacing: .14em; text-transform: uppercase; }
+        .nav-label { padding: 0 12px 10px; }
+        .nav { display: grid; gap: 5px; }
+        .nav button { border: 1px solid transparent; color: var(--muted); background: transparent; text-align: left; border-radius: 10px; padding: 12px; transition: .2s ease; }
+        .nav button:hover { color: var(--ink); background: rgba(255,255,255,.035); }
+        .nav button.active { border-color: rgba(115,166,255,.2); color: var(--ink); background: rgba(115,166,255,.1); }
+        .nav button span { display: inline-block; width: 23px; color: var(--muted-2); font: 12px 'DM Mono', monospace; }
+        .sidebar-foot { margin-top: auto; padding: 17px 12px 4px; color: var(--muted-2); font-size: 11px; line-height: 1.7; border-top: 1px solid var(--line); }
+        .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 10px var(--lime); margin-right: 7px; }
+        main { width: min(1180px, 100%); padding: 34px 46px 60px; margin: 0 auto; }
+        .topbar { display: flex; justify-content: space-between; align-items: start; gap: 25px; margin-bottom: 45px; }
+        h1, h2, h3, p { margin-top: 0; }
+        h1 { margin-bottom: 9px; font-size: clamp(28px, 4vw, 43px); letter-spacing: -1.9px; line-height: 1.07; }
+        .lede { max-width: 660px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+        .runtime { border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; display: flex; gap: 9px; align-items: center; white-space: nowrap; color: var(--muted); font: 11px 'DM Mono', monospace; }
+        .runtime b { color: var(--lime); font-weight: 500; }
+        .view { display: none; animation: rise .35s ease both; }
+        .view.active { display: block; }
+        @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        .section-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 14px; gap: 20px; }
+        .section-head h2 { margin: 3px 0 0; font-size: 18px; letter-spacing: -.5px; }
+        .section-head p { margin: 0; color: var(--muted); font-size: 12px; }
+        .grid-2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr); gap: 18px; }
+        .panel { border: 1px solid var(--line); border-radius: 15px; background: rgba(15, 27, 42, .82); box-shadow: var(--shadow); }
+        .composer { padding: 22px; }
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        label { color: var(--muted); font: 500 10px 'DM Mono', monospace; letter-spacing: .12em; text-transform: uppercase; }
+        .counter { color: var(--muted-2); font: 11px 'DM Mono', monospace; }
+        textarea { display: block; width: 100%; min-height: 170px; resize: vertical; border: 1px solid var(--line); border-radius: 11px; outline: 0; padding: 16px; color: var(--ink); background: #0a1523; font-size: 14px; line-height: 1.65; transition: .2s ease; }
+        textarea:focus { border-color: rgba(115,166,255,.7); box-shadow: 0 0 0 3px rgba(115,166,255,.1); }
+        textarea::placeholder { color: #536176; }
+        .composer-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 13px; }
+        .hint { color: var(--muted-2); font-size: 11px; }
+        .primary { border: 0; border-radius: 9px; padding: 11px 18px; color: #07101a; background: var(--lime); font-weight: 800; font-size: 12px; transition: transform .15s, filter .15s; }
+        .primary:hover { filter: brightness(1.07); transform: translateY(-1px); }
+        .primary:disabled { opacity: .55; cursor: wait; transform: none; }
+        .ghost { border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; color: var(--muted); background: transparent; font-size: 11px; }
+        .ghost:hover { color: var(--ink); border-color: #38506e; }
+        .result-panel { padding: 22px; min-height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+        .empty-state { min-height: 216px; display: grid; place-items: center; text-align: center; color: var(--muted); }
+        .empty-icon { width: 52px; height: 52px; display: grid; place-items: center; margin: 0 auto 12px; border: 1px dashed #3b516d; border-radius: 50%; color: var(--blue); font-size: 20px; }
+        .empty-state p { margin: 0; font-size: 12px; line-height: 1.6; }
+        .result-wrap { display: none; }
+        .result-wrap.show { display: block; }
+        .result-head { display: flex; align-items: center; gap: 13px; margin-bottom: 19px; }
+        .result-orb { width: 47px; height: 47px; display: grid; place-items: center; border-radius: 13px; font-size: 22px; }
+        .result-orb.positive { color: var(--lime); background: rgba(184,239,146,.1); }
+        .result-orb.negative { color: var(--coral); background: rgba(255,146,126,.1); }
+        .result-head h3 { margin: 0 0 3px; font-size: 20px; letter-spacing: -.6px; }
+        .result-head p { margin: 0; color: var(--muted); font-size: 11px; }
+        .confidence { margin: 22px 0 18px; }
+        .confidence-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; color: var(--muted); font-size: 11px; }
+        .confidence-top strong { color: var(--ink); font: 500 20px 'DM Mono', monospace; }
+        .track { height: 7px; border-radius: 99px; background: #1b2b40; overflow: hidden; }
+        .fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--blue), var(--cyan)); transition: width .7s ease; }
+        .prob-row { display: flex; gap: 8px; margin-top: 17px; }
+        .prob { flex: 1; border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; }
+        .prob small { display: block; color: var(--muted-2); font-size: 10px; margin-bottom: 4px; }
+        .prob b { font: 500 13px 'DM Mono', monospace; }
+        .prob b.pos { color: var(--lime); } .prob b.neg { color: var(--coral); }
+        .mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 17px; }
+        .mini-stat { padding-top: 11px; border-top: 1px solid var(--line); }
+        .mini-stat small { display: block; color: var(--muted-2); font-size: 10px; margin-bottom: 4px; }
+        .mini-stat b { font: 500 12px 'DM Mono', monospace; }
+        .error { display: none; margin-top: 13px; padding: 10px 12px; border: 1px solid rgba(255,146,126,.3); border-radius: 9px; color: var(--coral); background: rgba(255,146,126,.07); font-size: 12px; }
+        .error.show { display: block; }
+        .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 11px; margin: 36px 0 40px; }
+        .metric { padding: 15px 16px; border: 1px solid var(--line); border-radius: 11px; background: rgba(15,27,42,.55); }
+        .metric small { display: block; margin-bottom: 10px; color: var(--muted-2); font-size: 10px; }
+        .metric strong { font: 500 20px 'DM Mono', monospace; }
+        .metric strong.blue { color: var(--blue); } .metric strong.cyan { color: var(--cyan); }
+        .batch-input { padding: 22px; }
+        .batch-input textarea { min-height: 225px; font-family: 'DM Mono', monospace; font-size: 12px; }
+        .batch-layout { display: grid; grid-template-columns: .75fr 1.25fr; gap: 18px; }
+        .batch-results { padding: 22px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+        .summary-item { background: #0a1523; border-radius: 9px; padding: 11px; }
+        .summary-item small { color: var(--muted-2); display: block; font-size: 10px; margin-bottom: 6px; }
+        .summary-item b { font: 500 16px 'DM Mono', monospace; }
+        .bar-chart { display: grid; gap: 10px; margin: 12px 0 22px; }
+        .bar-line { display: grid; grid-template-columns: 72px 1fr 42px; align-items: center; gap: 9px; color: var(--muted); font-size: 11px; }
+        .bar-line .track { height: 8px; }
+        .bar-line .fill.pos { background: var(--lime); } .bar-line .fill.neg { background: var(--coral); }
+        .bar-line b { text-align: right; color: var(--ink); font: 500 11px 'DM Mono', monospace; }
+        .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th, td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+        th { color: var(--muted-2); font: 500 10px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+        td { color: var(--muted); } td:first-child { max-width: 340px; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+        tr:last-child td { border-bottom: 0; }
+        .pill { display: inline-block; border-radius: 99px; padding: 4px 7px; font-size: 10px; }
+        .pill.positive { color: var(--lime); background: rgba(184,239,146,.1); } .pill.negative { color: var(--coral); background: rgba(255,146,126,.1); }
+        .about { max-width: 800px; }
+        .about-card { padding: 26px; margin-bottom: 14px; }
+        .about-card h3 { margin-bottom: 8px; font-size: 16px; }
+        .about-card p { color: var(--muted); line-height: 1.8; font-size: 13px; }
+        .about-card p:last-child { margin-bottom: 0; }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip { padding: 7px 10px; color: var(--blue); border: 1px solid rgba(115,166,255,.23); border-radius: 99px; font: 11px 'DM Mono', monospace; background: rgba(115,166,255,.06); }
+        @media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { border-right: 0; border-bottom: 1px solid var(--line); padding: 14px 18px; } .brand { padding: 0 4px 13px; } .nav-label, .sidebar-foot { display: none; } .nav { display: flex; gap: 4px; } .nav button { flex: 1; padding: 9px; } main { padding: 28px 22px 45px; } .topbar { margin-bottom: 32px; } }
+        @media (max-width: 680px) { .topbar { display: block; } .runtime { display: inline-flex; margin-top: 18px; } .grid-2, .batch-layout { grid-template-columns: 1fr; } .metric-grid { grid-template-columns: repeat(2, 1fr); margin: 25px 0 32px; } .summary-grid { grid-template-columns: repeat(2, 1fr); } .composer, .result-panel, .batch-input, .batch-results { padding: 17px; } .composer-foot { align-items: end; flex-direction: column; } .primary { width: 100%; } }
     </style>
 </head>
 
 <body>
-    <div class="card">
-        <h1>Sentiment Analyzer</h1>
-        <p class="subtitle">Powered by DistilBERT · ONNX Runtime · No PyTorch</p>
-
-        <form method="POST" action="/">
-            <label for="text">Your text</label>
-            <textarea id="text" name="text" placeholder="Type or paste any sentence here…"
-                autofocus>{{ input_text }}</textarea>
-
-            <button type="submit">Analyze →</button>
-        </form>
-
-        {% if result %}
-        {% set cls = result.sentiment | lower %}
-        <div class="result {{ cls }}">
-            <span class="result-emoji">{{ result.emoji }}</span>
-            <div class="result-body">
-                <div class="result-label">{{ result.sentiment }}</div>
-                <div class="result-conf">Confidence: {{ result.confidence }}</div>
-                <div class="bar-track">
-                    <div class="bar-fill" style="width: {{ result.confidence }}"></div>
-                </div>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true"></div>
+                <div><strong>Sentiment Lab</strong><small>ML intelligence</small></div>
             </div>
-        </div>
-        {% endif %}
+            <div class="nav-label eyebrow">Workspace</div>
+            <nav class="nav" aria-label="Workspace navigation">
+                <button class="active" data-view="analyze"><span>01</span> Analyze text</button>
+                <button data-view="batch"><span>02</span> Batch insights</button>
+                <button data-view="about"><span>03</span> Model card</button>
+            </nav>
+            <div class="sidebar-foot"><span class="dot"></span>Inference service online<br>ONNX Runtime · CPU optimized</div>
+        </aside>
 
-        <p class="footer">DistilBERT SST-2 · runs entirely on CPU</p>
+        <main>
+            <header class="topbar">
+                <div>
+                    <div class="eyebrow">Sentiment intelligence / v1.0</div>
+                    <h1>Turn language into<br><span style="color:var(--cyan)">actionable signal.</span></h1>
+                    <p class="lede">Explore sentiment at the speed of thought. Score individual feedback or profile a small text dataset with a production-style inference workflow.</p>
+                </div>
+                <div class="runtime"><span class="dot"></span><b>LIVE</b> · DistilBERT API</div>
+            </header>
+
+            <section class="view active" id="view-analyze">
+                <div class="section-head"><div><div class="eyebrow">01 / Single inference</div><h2>What is the signal?</h2></div><p>Type, paste, or use a sample</p></div>
+                <div class="grid-2">
+                    <div class="panel composer">
+                        <div class="label-row"><label for="text-input">Input text</label><span class="counter" id="char-count">0 / 10,000</span></div>
+                        <textarea id="text-input" maxlength="10000" placeholder="e.g. The onboarding was smooth and the support team went above and beyond..."></textarea>
+                        <div class="composer-foot"><span class="hint">⌘ / Ctrl + Enter to analyze</span><button class="primary" id="analyze-btn">Run analysis&nbsp; ↗</button></div>
+                        <div class="error" id="single-error" role="alert"></div>
+                    </div>
+                    <div class="panel result-panel">
+                        <div class="empty-state" id="empty-result"><div><div class="empty-icon">✦</div><p>Your model output will appear here.<br>Confidence and token-level metadata included.</p></div></div>
+                        <div class="result-wrap" id="single-result">
+                            <div class="result-head"><div class="result-orb" id="result-orb"></div><div><h3 id="result-label">Positive</h3><p id="result-band">High confidence prediction</p></div></div>
+                            <div class="confidence"><div class="confidence-top"><span>Model confidence</span><strong id="result-confidence">—</strong></div><div class="track"><div class="fill" id="result-fill" style="width:0"></div></div></div>
+                            <div class="prob-row"><div class="prob"><small>Negative probability</small><b class="neg" id="prob-negative">—</b></div><div class="prob"><small>Positive probability</small><b class="pos" id="prob-positive">—</b></div></div>
+                            <div class="mini-stats"><div class="mini-stat"><small>Words</small><b id="stat-words">—</b></div><div class="mini-stat"><small>Tokens</small><b id="stat-tokens">—</b></div><div class="mini-stat"><small>Characters</small><b id="stat-chars">—</b></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-grid"><div class="metric"><small>Model architecture</small><strong class="blue">DistilBERT</strong></div><div class="metric"><small>Inference runtime</small><strong>ONNX</strong></div><div class="metric"><small>Maximum context</small><strong class="cyan">512 tok</strong></div><div class="metric"><small>Task framing</small><strong>Binary</strong></div></div>
+            </section>
+
+            <section class="view" id="view-batch">
+                <div class="section-head"><div><div class="eyebrow">02 / Batch analytics</div><h2>Read the room at scale.</h2></div><p>One text per line · up to 100 rows</p></div>
+                <div class="batch-layout">
+                    <div class="panel batch-input"><div class="label-row"><label for="batch-input">Dataset preview</label><span class="counter" id="line-count">0 rows</span></div><textarea id="batch-input" placeholder="Paste customer reviews, survey responses, or support tickets here — one item per line..."></textarea><div class="composer-foot"><button class="ghost" id="load-sample">Load sample data</button><button class="primary" id="batch-btn">Profile dataset&nbsp; ↗</button></div><div class="error" id="batch-error" role="alert"></div></div>
+                    <div class="panel batch-results" id="batch-results"><div class="empty-state" id="empty-batch"><div><div class="empty-icon">⌁</div><p>Batch summaries, distribution bars,<br>and row-level predictions will land here.</p></div></div><div id="batch-output" style="display:none"><div class="summary-grid"><div class="summary-item"><small>Rows analyzed</small><b id="sum-count">—</b></div><div class="summary-item"><small>Positive share</small><b style="color:var(--lime)" id="sum-positive">—</b></div><div class="summary-item"><small>Avg confidence</small><b style="color:var(--blue)" id="sum-confidence">—</b></div><div class="summary-item"><small>Batch latency</small><b id="sum-latency">—</b></div></div><div class="eyebrow">Distribution</div><div class="bar-chart"><div class="bar-line"><span>Positive</span><div class="track"><div class="fill pos" id="positive-bar" style="width:0"></div></div><b id="positive-count">0</b></div><div class="bar-line"><span>Negative</span><div class="track"><div class="fill neg" id="negative-bar" style="width:0"></div></div><b id="negative-count">0</b></div></div><div class="table-wrap"><table><thead><tr><th>Text preview</th><th>Label</th><th>Confidence</th><th>Words</th></tr></thead><tbody id="batch-table"></tbody></table></div></div></div>
+                </div>
+            </section>
+
+            <section class="view about" id="view-about">
+                <div class="section-head"><div><div class="eyebrow">03 / Model card</div><h2>What is under the hood?</h2></div></div>
+                <div class="panel about-card"><h3>DistilBERT fine-tuned on SST-2</h3><p>This app serves a compact transformer classifier through ONNX Runtime. The pipeline tokenizes text, runs batched CPU inference, converts logits into calibrated class probabilities, and returns an enriched record for downstream analysis.</p><p>Use the confidence bands as a decision-support cue, not as a guarantee of correctness. The model is trained for English movie-review sentiment and may be less reliable on sarcasm, domain-specific language, or mixed sentiment.</p></div>
+                <div class="panel about-card"><h3>Portfolio signals</h3><div class="chips"><span class="chip">NLP inference</span><span class="chip">Batch processing</span><span class="chip">Data profiling</span><span class="chip">REST API</span><span class="chip">Confidence analysis</span><span class="chip">Responsive UI</span><span class="chip">CPU deployment</span></div></div>
+                <div class="panel about-card"><h3>API surface</h3><p><span class="chip">POST /api/predict</span> returns a single enriched prediction. <span class="chip">POST /api/batch</span> accepts <code>{ "texts": ["…"] }</code> and returns row-level results plus aggregate metrics. <span class="chip">GET /api/health</span> is ready for deployment checks.</p></div>
+            </section>
+        </main>
     </div>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const samples = [
+            'The dashboard is beautiful and the insights are genuinely useful.',
+            'Support took three days to respond and never solved my issue.',
+            'The experience was okay, but there is plenty of room to improve.',
+            'Absolutely loved the thoughtful details and fast delivery!',
+            'The product crashed twice during checkout. Very frustrating.',
+            'Clear documentation, friendly onboarding, and a great team.',
+            'I am not sure this is worth the price anymore.',
+            'The update is fine, nothing particularly memorable.'
+        ];
+
+        function escapeHTML(value) { return String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char])); }
+        function showError(id, message) { const element = $(id); element.textContent = message; element.classList.toggle('show', Boolean(message)); }
+        function setBusy(button, busy, label) { button.disabled = busy; button.textContent = busy ? 'Analyzing…' : label; }
+        function percent(value) { return `${(Number(value) * 100).toFixed(1)}%`; }
+
+        document.querySelectorAll('.nav button').forEach((button) => button.addEventListener('click', () => {
+            document.querySelectorAll('.nav button').forEach((item) => item.classList.remove('active'));
+            document.querySelectorAll('.view').forEach((view) => view.classList.remove('active'));
+            button.classList.add('active'); $('view-' + button.dataset.view).classList.add('active');
+        }));
+
+        $('text-input').addEventListener('input', (event) => { $('char-count').textContent = `${event.target.value.length.toLocaleString()} / 10,000`; });
+        $('batch-input').addEventListener('input', (event) => { const rows = event.target.value.split('\n').filter((line) => line.trim()).length; $('line-count').textContent = `${rows} row${rows === 1 ? '' : 's'}`; });
+        $('load-sample').addEventListener('click', () => { $('batch-input').value = samples.join('\n'); $('batch-input').dispatchEvent(new Event('input')); });
+        $('text-input').addEventListener('keydown', (event) => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') $('analyze-btn').click(); });
+
+        $('analyze-btn').addEventListener('click', async () => {
+            const text = $('text-input').value.trim(); showError('single-error', '');
+            if (!text) { showError('single-error', 'Add some text before running an analysis.'); return; }
+            const button = $('analyze-btn'); setBusy(button, true, 'Run analysis ↗');
+            try {
+                const response = await fetch('/api/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+                const data = await response.json(); if (!response.ok) throw new Error(data.error || 'The model could not analyze this text.');
+                const positive = data.sentiment === 'Positive';
+                $('empty-result').style.display = 'none'; $('single-result').classList.add('show');
+                $('result-orb').className = 'result-orb ' + (positive ? 'positive' : 'negative'); $('result-orb').textContent = data.emoji;
+                $('result-label').textContent = data.sentiment; $('result-band').textContent = `${data.confidence_band} confidence prediction`;
+                $('result-confidence').textContent = percent(data.confidence); $('result-fill').style.width = `${data.confidence_percent}%`;
+                $('prob-negative').textContent = percent(data.probabilities.negative); $('prob-positive').textContent = percent(data.probabilities.positive);
+                $('stat-words').textContent = data.word_count; $('stat-tokens').textContent = data.token_count; $('stat-chars').textContent = data.character_count.toLocaleString();
+            } catch (error) { showError('single-error', error.message); } finally { setBusy(button, false, 'Run analysis ↗'); }
+        });
+
+        $('batch-btn').addEventListener('click', async () => {
+            const texts = $('batch-input').value.split('\n').map((line) => line.trim()).filter(Boolean); showError('batch-error', '');
+            if (!texts.length) { showError('batch-error', 'Add at least one line of text to profile.'); return; }
+            if (texts.length > 100) { showError('batch-error', 'The batch limit is 100 rows.'); return; }
+            const button = $('batch-btn'); setBusy(button, true, 'Profile dataset ↗');
+            try {
+                const response = await fetch('/api/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texts }) });
+                const data = await response.json(); if (!response.ok) throw new Error(data.error || 'The batch could not be analyzed.');
+                const summary = data.summary; $('empty-batch').style.display = 'none'; $('batch-output').style.display = 'block';
+                $('sum-count').textContent = summary.count; $('sum-positive').textContent = `${summary.positive_percent}%`; $('sum-confidence').textContent = percent(summary.average_confidence); $('sum-latency').textContent = `${summary.latency_ms} ms`;
+                $('positive-bar').style.width = `${summary.positive_percent}%`; $('negative-bar').style.width = `${summary.negative_percent}%`; $('positive-count').textContent = summary.positive; $('negative-count').textContent = summary.negative;
+                $('batch-table').innerHTML = data.results.map((item) => `<tr><td title="${escapeHTML(item.text)}">${escapeHTML(item.text)}</td><td><span class="pill ${item.sentiment.toLowerCase()}">${escapeHTML(item.sentiment)}</span></td><td>${percent(item.confidence)}</td><td>${item.word_count}</td></tr>`).join('');
+            } catch (error) { showError('batch-error', error.message); } finally { setBusy(button, false, 'Profile dataset ↗'); }
+        });
+    </script>
 </body>
 
 </html>

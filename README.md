@@ -1,88 +1,81 @@
-# Sentiment Analysis Web App
+# Sentiment Lab
 
-## Overview
-A machine learning-based web application that performs sentiment analysis on user-input text. Uses a pre-trained DistilBERT model (SST-2) from Hugging Face, running via **ONNX Runtime** — no PyTorch required — and deployed as a Flask web app on Render.
+Sentiment Lab is a portfolio-ready NLP dashboard that turns raw text into a useful signal. It combines a production-minded inference API with a small analytics workspace, making the project demonstrate more than a model call: batching, data profiling, confidence communication, deployment health checks, and responsive product UI.
 
-## Features
-- **Sentiment Prediction** — Classifies text as Positive or Negative with confidence scores and a visual confidence bar.
-- **Lightweight Inference** — Runs on ONNX Runtime instead of PyTorch, reducing the dependency footprint from ~700 MB to ~10 MB.
-- **REST API** — JSON endpoint at `/api/predict` for programmatic use.
-- **Clean Dark UI** — Custom-styled interface with DM Serif Display typography, animated results, and emoji indicators.
-- **Deployment Ready** — Configured for Render with `gunicorn`.
+![Sentiment Lab dashboard](screenshots/image.png)
 
-## Tech Stack
-- **ML / Inference**: Hugging Face Transformers, Optimum, ONNX Runtime
-- **Web**: Flask, Jinja2, HTML/CSS
-- **Deployment**: Render (gunicorn)
+## What this showcases
 
-## Screenshots
-![Sentiment Analysis UI](screenshots/image.png)
+- **ML engineering:** DistilBERT fine-tuned on SST-2, exported for ONNX Runtime, NumPy-native inference, stable softmax probabilities, and configurable model loading.
+- **Data analysis:** batch scoring for up to 100 rows, positive/negative distribution, average confidence, latency, text-length metadata, and row-level predictions.
+- **Product thinking:** confidence bands, model limitations, clear empty/loading/error states, keyboard shortcut, sample data, and a responsive dashboard layout.
+- **Deployment readiness:** `/api/health`, environment-based `PORT` and `SENTIMENT_MODEL`, bounded request sizes, JSON validation, and Gunicorn compatibility.
 
-## Project Structure
-```
-sentiment-analysis-app/
-├── sentiment_analysis_app.py   # Flask app + inference logic
-├── requirements.txt
-└── templates/
-    └── index.html              # Frontend UI
-```
+## Stack
 
-## Setup
+| Layer | Tools |
+| --- | --- |
+| Model | Hugging Face Transformers · DistilBERT · SST-2 |
+| Inference | Optimum · ONNX Runtime · NumPy |
+| Application | Flask · Jinja2 · REST JSON endpoints |
+| Interface | Responsive HTML/CSS/JavaScript · no frontend build step |
+| Deployment | Gunicorn · Render-friendly start command |
 
-**1. Clone the repository**
+## Run locally
+
 ```bash
 git clone <your-repo-url>
 cd sentiment-analysis-app
-```
-
-**2. Install dependencies**
-```bash
 pip install -r requirements.txt
-```
-
-**3. Run locally**
-```bash
 python sentiment_analysis_app.py
 ```
-Visit `http://localhost:5000`. The ONNX model (~250 MB) downloads automatically on first run.
 
-## API Usage
+Open `http://localhost:5000`. The model and tokenizer download from Hugging Face on the first launch. The app runs on CPU and does not require PyTorch.
+
+## API
+
+Single prediction:
+
 ```bash
 curl -X POST http://localhost:5000/api/predict \
   -H "Content-Type: application/json" \
-  -d '{"text": "This is absolutely amazing!"}'
+  -d '{"text":"The onboarding was smooth and delightful."}'
 ```
-```json
-{
-  "sentiment": "Positive",
-  "confidence": 0.9987,
-  "emoji": "😊",
-  "text": "This is absolutely amazing!"
-}
+
+Batch analytics:
+
+```bash
+curl -X POST http://localhost:5000/api/batch \
+  -H "Content-Type: application/json" \
+  -d '{"texts":["Fast delivery and great quality.","The support experience was frustrating."]}'
 ```
+
+Useful operational endpoint:
+
+```bash
+curl http://localhost:5000/api/health
+```
+
+The batch response contains both `results` and a `summary` object with counts, sentiment share, average confidence, confidence bands, and inference latency.
 
 ## Deployment on Render
-1. Create a free account at [render.com](https://render.com) and connect your GitHub repo.
-2. Set runtime to **Python**.
-3. Build command:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Start command:
-   ```bash
-   gunicorn --bind 0.0.0.0:$PORT sentiment_analysis_app:app
-   ```
-5. Deploy — Render provides a live URL automatically.
 
-## Why ONNX Runtime instead of PyTorch?
-| | PyTorch | ONNX Runtime |
-|---|---|---|
-| Install size | ~700 MB | ~10 MB |
-| CPU inference speed | Baseline | ~1.5–2× faster |
-| Required for this app | No | Yes |
+- **Build command:** `pip install -r requirements.txt`
+- **Start command:** `gunicorn --bind 0.0.0.0:$PORT sentiment_analysis_app:app`
 
-## Future Improvements
-- Add Neutral class support for nuanced sentiment.
-- Real-time predictions via JavaScript (no page reload).
-- Batch text analysis from file upload.
-- Confidence threshold warnings for borderline predictions.
+The app reads `PORT` automatically and exposes `/api/health` for service checks.
+
+## Important model limitation
+
+The underlying classifier is trained for English movie-review sentiment. Confidence is a model score, not a probability guarantee. Treat low-confidence results as review candidates, especially for sarcasm, mixed sentiment, domain-specific language, or text outside the model's training distribution.
+
+## Project structure
+
+```text
+sentiment-analysis-app/
+├── sentiment_analysis_app.py   # Flask app, inference, batch analytics, API
+├── requirements.txt
+├── README.md
+└── templates/
+    └── index.html              # Responsive dashboard UI
+```
