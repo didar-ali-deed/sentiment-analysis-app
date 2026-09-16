@@ -9,14 +9,18 @@ analysis workflows as well as model serving.
 from __future__ import annotations
 
 import os
+import threading
 import time
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 from flask import Flask, jsonify, render_template, request
 from optimum.onnxruntime import ORTModelForSequenceClassification
 from transformers import AutoTokenizer
+
+from emotion_lstm import EMOTION_LABELS, EmotionLSTM
 
 
 app = Flask(__name__)
@@ -27,6 +31,9 @@ MODEL_NAME = os.getenv(
 MAX_LENGTH = 512
 MAX_TEXT_LENGTH = 10_000
 MAX_BATCH_SIZE = 100
+BASE_DIR = Path(__file__).resolve().parent
+EMOTION_MODEL_PATH = Path(os.getenv('EMOTION_MODEL_PATH', BASE_DIR / 'models' / 'emotion_model.keras'))
+EMOTION_TOKENIZER_PATH = Path(os.getenv('EMOTION_TOKENIZER_PATH', BASE_DIR / 'models' / 'tokenizer.pkl'))
 
 SENTIMENT_MAP = {0: "Negative", 1: "Positive"}
 EMOJI_MAP = {"Negative": "☹", "Positive": "☺"}
@@ -35,6 +42,31 @@ print(f"Loading tokenizer and ONNX model: {MODEL_NAME}")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = ORTModelForSequenceClassification.from_pretrained(MODEL_NAME)
 print("Model loaded successfully.")
+
+_emotion_model: EmotionLSTM | None = None
+_emotion_error: str | None = None
+_emotion_lock = threading.Lock()
+
+
+def get_emotion_model() -> EmotionLSTM:
+    """Load the LSTM only when needed so sentiment startup stays fast."""
+    global _emotion_model, _emotion_error
+    if _emotion_model is not None:
+        return _emotion_model
+    with _emotion_lock:
+        if _emotion_model is not None:
+            return _emotion_model
+        if not EMOTION_MODEL_PATH.exists() or not EMOTION_TOKENIZER_PATH.exists():
+            raise RuntimeError(
+                "Emotion model assets are missing. Expected models/emotion_model.keras and models/tokenizer.pkl."
+            )
+        try:
+            _emotion_model = EmotionLSTM(EMOTION_MODEL_PATH, EMOTION_TOKENIZER_PATH)
+            _emotion_error = None
+            return _emotion_model
+        except Exception as exc:
+            _emotion_error = str(exc)
+            raise RuntimeError(f"Emotion model could not be loaded: {exc}") from exc
 
 
 def _softmax(logits: np.ndarray) -> np.ndarray:
@@ -171,6 +203,9 @@ def model_info():
             "max_tokens": MAX_LENGTH,
             "labels": ["Negative", "Positive"],
             "device": "CPU",
+            "emotion_model": "Bidirectional LSTM",
+            "emotion_labels": EMOTION_LABELS,
+            "emotion_assets_available": EMOTION_MODEL_PATH.exists() and EMOTION_TOKENIZER_PATH.exists(),
         }
     )
 
@@ -188,6 +223,41 @@ def api_predict():
         return jsonify(predict_sentiment(text))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+
+
+@app.post("/api/emotion")
+def api_emotion():
+    data = request.get_json(silent=True) or {}
+    raw_text = data.get("text", "")
+    if not isinstance(raw_text, str):
+        return jsonify({"error": "text must be a string."}), 400
+    text = raw_text.strip()
+    if not text:
+        return jsonify({"error": "No text provided."}), 400
+    if len(text) > MAX_TEXT_LENGTH:
+        return jsonify({"error": f"Text must be {MAX_TEXT_LENGTH:,} characters or fewer."}), 400
+    try:
+        return jsonify({"text": text, **get_emotion_model().predict(text)})
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 503
+
+
+@app.post("/api/analyze")
+def api_analyze():
+    """Return polarity and emotion from the two complementary classifiers."""
+    data = request.get_json(silent=True) or {}
+    raw_text = data.get("text", "")
+    if not isinstance(raw_text, str):
+        return jsonify({"error": "text must be a string."}), 400
+    text = raw_text.strip()
+    if not text:
+        return jsonify({"error": "No text provided."}), 400
+    try:
+        return jsonify({"sentiment": predict_sentiment(text), "emotion": get_emotion_model().predict(text)})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 503
 
 
 @app.post("/api/batch")

@@ -99,6 +99,15 @@
         .prob small { display: block; color: var(--muted-2); font-size: 10px; margin-bottom: 4px; }
         .prob b { font: 500 13px 'DM Mono', monospace; }
         .prob b.pos { color: var(--lime); } .prob b.neg { color: var(--coral); }
+        .emotion-box { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+        .emotion-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+        .emotion-heading strong { color: var(--cyan); font-size: 14px; }
+        .emotion-heading span:last-child { color: var(--muted); font: 10px 'DM Mono', monospace; }
+        .emotion-bars { display: grid; gap: 7px; margin-top: 12px; }
+        .emotion-bar { display: grid; grid-template-columns: 62px 1fr 38px; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; }
+        .emotion-bar .track { height: 5px; }
+        .emotion-bar .fill { background: linear-gradient(90deg, var(--cyan), var(--blue)); }
+        .emotion-bar b { color: var(--ink); text-align: right; font: 10px 'DM Mono', monospace; }
         .mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 17px; }
         .mini-stat { padding-top: 11px; border-top: 1px solid var(--line); }
         .mini-stat small { display: block; color: var(--muted-2); font-size: 10px; margin-bottom: 4px; }
@@ -184,6 +193,7 @@
                             <div class="result-head"><div class="result-orb" id="result-orb"></div><div><h3 id="result-label">Positive</h3><p id="result-band">High confidence prediction</p></div></div>
                             <div class="confidence"><div class="confidence-top"><span>Model confidence</span><strong id="result-confidence">—</strong></div><div class="track"><div class="fill" id="result-fill" style="width:0"></div></div></div>
                             <div class="prob-row"><div class="prob"><small>Negative probability</small><b class="neg" id="prob-negative">—</b></div><div class="prob"><small>Positive probability</small><b class="pos" id="prob-positive">—</b></div></div>
+                            <div class="emotion-box"><div class="emotion-heading"><span class="eyebrow">Emotion signal</span><strong id="emotion-label">—</strong><span id="emotion-confidence">—</span></div><div class="emotion-bars" id="emotion-bars"></div></div>
                             <div class="mini-stats"><div class="mini-stat"><small>Words</small><b id="stat-words">—</b></div><div class="mini-stat"><small>Tokens</small><b id="stat-tokens">—</b></div><div class="mini-stat"><small>Characters</small><b id="stat-chars">—</b></div></div>
                         </div>
                     </div>
@@ -201,8 +211,8 @@
 
             <section class="view about" id="view-about">
                 <div class="section-head"><div><div class="eyebrow">03 / Model card</div><h2>What is under the hood?</h2></div></div>
-                <div class="panel about-card"><h3>DistilBERT fine-tuned on SST-2</h3><p>This app serves a compact transformer classifier through ONNX Runtime. The pipeline tokenizes text, runs batched CPU inference, converts logits into calibrated class probabilities, and returns an enriched record for downstream analysis.</p><p>Use the confidence bands as a decision-support cue, not as a guarantee of correctness. The model is trained for English movie-review sentiment and may be less reliable on sarcasm, domain-specific language, or mixed sentiment.</p></div>
-                <div class="panel about-card"><h3>Portfolio signals</h3><div class="chips"><span class="chip">NLP inference</span><span class="chip">Batch processing</span><span class="chip">Data profiling</span><span class="chip">REST API</span><span class="chip">Confidence analysis</span><span class="chip">Responsive UI</span><span class="chip">CPU deployment</span></div></div>
+                <div class="panel about-card"><h3>DistilBERT fine-tuned on SST-2</h3><p>This app serves two complementary classifiers: a compact transformer through ONNX Runtime for sentiment polarity, and a trained Bidirectional LSTM through TensorFlow/Keras for six-class emotion recognition. The pipeline tokenizes text, runs batched CPU inference, converts logits into calibrated class probabilities, and returns an enriched record for downstream analysis.</p><p>Use the confidence bands as a decision-support cue, not as a guarantee of correctness. The model is trained for English movie-review sentiment and may be less reliable on sarcasm, domain-specific language, or mixed sentiment.</p></div>
+                <div class="panel about-card"><h3>Portfolio signals</h3><div class="chips"><span class="chip">NLP inference</span><span class="chip">Batch processing</span><span class="chip">Data profiling</span><span class="chip">REST API</span><span class="chip">Emotion classification</span><span class="chip">Responsive UI</span><span class="chip">CPU deployment</span></div></div>
                 <div class="panel about-card"><h3>API surface</h3><p><span class="chip">POST /api/predict</span> returns a single enriched prediction. <span class="chip">POST /api/batch</span> accepts <code>{ "texts": ["…"] }</code> and returns row-level results plus aggregate metrics. <span class="chip">GET /api/health</span> is ready for deployment checks.</p></div>
             </section>
         </main>
@@ -242,15 +252,17 @@
             if (!text) { showError('single-error', 'Add some text before running an analysis.'); return; }
             const button = $('analyze-btn'); setBusy(button, true, 'Run analysis ↗');
             try {
-                const response = await fetch('/api/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+                const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
                 const data = await response.json(); if (!response.ok) throw new Error(data.error || 'The model could not analyze this text.');
-                const positive = data.sentiment === 'Positive';
+                const positive = data.sentiment.sentiment === 'Positive';
                 $('empty-result').style.display = 'none'; $('single-result').classList.add('show');
-                $('result-orb').className = 'result-orb ' + (positive ? 'positive' : 'negative'); $('result-orb').textContent = data.emoji;
-                $('result-label').textContent = data.sentiment; $('result-band').textContent = `${data.confidence_band} confidence prediction`;
-                $('result-confidence').textContent = percent(data.confidence); $('result-fill').style.width = `${data.confidence_percent}%`;
-                $('prob-negative').textContent = percent(data.probabilities.negative); $('prob-positive').textContent = percent(data.probabilities.positive);
-                $('stat-words').textContent = data.word_count; $('stat-tokens').textContent = data.token_count; $('stat-chars').textContent = data.character_count.toLocaleString();
+                $('result-orb').className = 'result-orb ' + (positive ? 'positive' : 'negative'); $('result-orb').textContent = data.sentiment.emoji;
+                $('result-label').textContent = data.sentiment.sentiment; $('result-band').textContent = `${data.sentiment.confidence_band} confidence prediction`;
+                $('result-confidence').textContent = percent(data.sentiment.confidence); $('result-fill').style.width = `${data.sentiment.confidence_percent}%`;
+                $('prob-negative').textContent = percent(data.sentiment.probabilities.negative); $('prob-positive').textContent = percent(data.sentiment.probabilities.positive);
+                $('stat-words').textContent = data.sentiment.word_count; $('stat-tokens').textContent = data.sentiment.token_count; $('stat-chars').textContent = data.sentiment.character_count.toLocaleString();
+                $('emotion-label').textContent = data.emotion.emotion; $('emotion-confidence').textContent = `${percent(data.emotion.confidence)} confidence`;
+                $('emotion-bars').innerHTML = data.emotion.top_emotions.map((item) => `<div class="emotion-bar"><span>${escapeHTML(item.emotion)}</span><div class="track"><div class="fill" style="width:${item.probability * 100}%"></div></div><b>${percent(item.probability)}</b></div>`).join('');
             } catch (error) { showError('single-error', error.message); } finally { setBusy(button, false, 'Run analysis ↗'); }
         });
 
