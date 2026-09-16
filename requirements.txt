@@ -13,6 +13,7 @@ gunicorn==23.0.0
 # ── Emotion model inference
 # TensorFlow/Keras loads the trained Bidirectional LSTM emotion classifier
 tensorflow>=2.16.0
+tf-keras>=2.16.0
 nltk>=3.9.0
 
 # ── ONNX inference (replaces torch ~700 MB with ~10 MB runtime) ───────────

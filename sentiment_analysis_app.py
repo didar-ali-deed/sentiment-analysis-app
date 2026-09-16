@@ -9,6 +9,7 @@ analysis workflows as well as model serving.
 from __future__ import annotations
 
 import os
+os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
 import threading
 import time
 from collections import Counter

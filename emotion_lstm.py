@@ -24,8 +24,8 @@ class EmotionLSTM:
     """Lazy-loaded Keras inference wrapper for the six-class emotion model."""
 
     def __init__(self, model_path: str | Path, tokenizer_path: str | Path) -> None:
-        from tensorflow.keras.models import load_model
-        from tensorflow.keras.preprocessing.sequence import pad_sequences
+        from keras.models import load_model
+        from keras.utils import pad_sequences
 
         self._pad_sequences = pad_sequences
         self.model = load_model(model_path)
